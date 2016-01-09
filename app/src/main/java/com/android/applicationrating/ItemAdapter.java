@@ -100,11 +100,13 @@ public class ItemAdapter extends ArrayAdapter<Item> {
                 preferencesEditor.commit();
 
 
-                 Collections.sort(itemList, ratingComparator);
+                Collections.sort(itemList, ratingComparator);
 //                listView.invalidateViews();
-                listenerActivity.getListView().smoothScrollToPosition(itemList.indexOf(item));
+                int newIndexOfItem = itemList.indexOf(item);
+                Log.i("newIndexOfItem", item.getAppName() + "\t->\t" + newIndexOfItem);
+                listenerActivity.getListView().smoothScrollToPosition(newIndexOfItem);
+                listenerActivity.getListView().invalidateViews();
                 notifyDataSetChanged();
-
             }
         };
     }
@@ -138,15 +140,12 @@ public class ItemAdapter extends ArrayAdapter<Item> {
             FilterResults filterResults = new FilterResults();
             final List<Item> filteredItems = new ArrayList<>();
 
-//            if (constraint.length() == 0) {
-//                filteredItems.addAll(originItemList);
-//            }
-//            else {
-                for (Item item : originItemList) {
-                    if (item.getAppName().toLowerCase().startsWith(constraint.toString().toLowerCase()))
-                        filteredItems.add(item);
-                }
-//            }
+
+            for (Item item : originItemList) {
+                if (item.getAppName().toLowerCase().startsWith(constraint.toString().toLowerCase()))
+                    filteredItems.add(item);
+            }
+
 
             filterResults.values = filteredItems;
             itemList.clear();

@@ -18,7 +18,6 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -40,14 +39,16 @@ public class MainActivity extends AppCompatActivity implements ListenerActivity 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.i("OnCreate", "OnCreate Method");
         setContentView(R.layout.activity_main);
-        listView = (ListView)findViewById(R.id.list_view);
+        listView = (ListView) findViewById(R.id.list_view);
         itemList = new ArrayList<>();
 
         itemAdapter = new ItemAdapter(this, R.layout.item_listview, itemList, this);
 
         filterEditText = (EditText) findViewById(R.id.appFilter);
         filterEditText.addTextChangedListener(getTextWatcher());
+        filterEditText.getText().clear();
 
         nameButton = (Button) findViewById(R.id.nameButton);
         nameButton.setOnClickListener(onClickNameButtonListener());
@@ -113,15 +114,15 @@ public class MainActivity extends AppCompatActivity implements ListenerActivity 
     public void runSelectedApp(int position) {
         ApplicationInfo app = itemList.get(position).getApplicationInfo();
 
-        try{
+        try {
             Intent intent = packageManager.getLaunchIntentForPackage(app.packageName);
 
-            if(intent != null) {
+            if (intent != null) {
                 startActivity(intent);
             }
-        } catch(ActivityNotFoundException e) {
+        } catch (ActivityNotFoundException e) {
             Toast.makeText(MainActivity.this, e.getMessage(), Toast.LENGTH_LONG).show();
-        } catch(Exception e) {
+        } catch (Exception e) {
             Toast.makeText(MainActivity.this, e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
@@ -150,12 +151,12 @@ public class MainActivity extends AppCompatActivity implements ListenerActivity 
 
             ArrayList<ApplicationInfo> appList = new ArrayList<ApplicationInfo>();
 
-            for(ApplicationInfo info : list) {
-                try{
-                    if(packageManager.getLaunchIntentForPackage(info.packageName) != null) {
+            for (ApplicationInfo info : list) {
+                try {
+                    if (packageManager.getLaunchIntentForPackage(info.packageName) != null) {
                         appList.add(info);
                     }
-                } catch(Exception e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
