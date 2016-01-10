@@ -24,16 +24,14 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity implements ListenerActivity {
 
     private ListView listView;
-    private ArrayList<Item> itemList;
+    private static ArrayList<Item> collectedItems = new ArrayList<>();
+    private static ButtonEnum selectedButton = ButtonEnum.NONE_BUTTON;   //  which button should be selected
     private PackageManager packageManager;
     private ItemAdapter itemAdapter;
 
     private EditText filterEditText;
     private Button nameButton;
     private Button ratingButton;
-
-    private NameComparator nameComparator = new NameComparator();
-    private RatingComparator ratingComparator = new RatingComparator();
 
 
     @Override
@@ -42,9 +40,6 @@ public class MainActivity extends AppCompatActivity implements ListenerActivity 
         Log.i("OnCreate", "OnCreate Method");
         setContentView(R.layout.activity_main);
         listView = (ListView) findViewById(R.id.list_view);
-        itemList = new ArrayList<>();
-
-        itemAdapter = new ItemAdapter(this, R.layout.item_listview, itemList, this);
 
         filterEditText = (EditText) findViewById(R.id.appFilter);
         filterEditText.addTextChangedListener(getTextWatcher());
@@ -56,15 +51,43 @@ public class MainActivity extends AppCompatActivity implements ListenerActivity 
         ratingButton = (Button) findViewById(R.id.ratingButton);
         ratingButton.setOnClickListener(onClickRatingButtonListener());
 
-        listView.setAdapter(itemAdapter);
-
         packageManager = getPackageManager();
 
         new LoadApplications().execute();
     }
 
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        //  which button should be selected after totate
+        switch (selectedButton) {
+            case SORT_BY_NAME_BUTTON:
+                nameButton.setEnabled(false);
+                ratingButton.setEnabled(true);
+                break;
+
+            case SORT_BY_RATING_BUTTON:
+                nameButton.setEnabled(true);
+                ratingButton.setEnabled(false);
+                break;
+
+            case NONE_BUTTON:
+                nameButton.setEnabled(true);
+                ratingButton.setEnabled(true);
+                break;
+        }
+
+    }
+
     public ListView getListView() {
         return listView;
+    }
+
+    @Override
+    public ButtonEnum getSelectedButton() {
+        return selectedButton;
     }
 
     private View.OnClickListener onClickNameButtonListener() {
@@ -72,8 +95,11 @@ public class MainActivity extends AppCompatActivity implements ListenerActivity 
             @Override
             public void onClick(View v) {
                 Log.i("NameButton", "clicked");
-                Collections.sort(itemAdapter.getItemList(), nameComparator);
-                listView.invalidateViews();
+                selectedButton = ButtonEnum.SORT_BY_NAME_BUTTON;
+                nameButton.setEnabled(false);
+                ratingButton.setEnabled(true);
+                itemAdapter.sortByName();
+//                listView.invalidateViews();
             }
         };
     }
@@ -83,8 +109,11 @@ public class MainActivity extends AppCompatActivity implements ListenerActivity 
             @Override
             public void onClick(View v) {
                 Log.i("RatingButton", "clicked");
-                Collections.sort(itemAdapter.getItemList(), ratingComparator);
-                listView.invalidateViews();
+                selectedButton = ButtonEnum.SORT_BY_RATING_BUTTON;
+                nameButton.setEnabled(true);
+                ratingButton.setEnabled(false);
+                itemAdapter.sortByRating();
+//                listView.invalidateViews();
             }
         };
     }
@@ -98,9 +127,17 @@ public class MainActivity extends AppCompatActivity implements ListenerActivity 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 Log.i("TextWatcher", s.toString());
-                itemAdapter.getFilter().filter(s);
-//                itemAdapter.notifyDataSetChanged();
-                listView.invalidateViews();
+                if (itemAdapter != null) {
+                    if (count < before) {
+                        // We're deleting char so we need to reset the adapter data
+                        Log.i("TextWatcher", "RESET");
+                        itemAdapter.resetData();
+                    }
+                    itemAdapter.getFilter().filter(s);
+                itemAdapter.notifyDataSetChanged();
+                    listView.invalidateViews();
+                    Log.i("ItemAdapterContent", "itemList size = " + itemAdapter.getItemListSize() + "\toriginItemList size = " + itemAdapter.getOriginItemListSize());
+                }
             }
 
             @Override
@@ -112,7 +149,7 @@ public class MainActivity extends AppCompatActivity implements ListenerActivity 
 
     @Override
     public void runSelectedApp(int position) {
-        ApplicationInfo app = itemList.get(position).getApplicationInfo();
+        ApplicationInfo app = collectedItems.get(position).getApplicationInfo();
 
         try {
             Intent intent = packageManager.getLaunchIntentForPackage(app.packageName);
@@ -135,21 +172,20 @@ public class MainActivity extends AppCompatActivity implements ListenerActivity 
         @Override
         protected Void doInBackground(Void... params) {
 
-            List<Item> collectedItems = new ArrayList<>();
-            for (ApplicationInfo applicationInfo : checkForLaunchIntent(packageManager.getInstalledApplications(PackageManager.GET_META_DATA))) {
-                String appName = (String) applicationInfo.loadLabel(packageManager);
-                Item item = new Item(applicationInfo, 0, appName);
-                collectedItems.add(item);
-                itemList.add(item);
+            if (collectedItems.isEmpty()) {   // run only once
+                Log.i("doInBackground", "Getting the apps Info" + collectedItems.size() + "");
+                for (ApplicationInfo applicationInfo : checkForLaunchIntent(packageManager.getInstalledApplications(PackageManager.GET_META_DATA))) {
+                    String appName = (String) applicationInfo.loadLabel(packageManager);
+                    Item item = new Item(applicationInfo, 0, appName);
+                    collectedItems.add(item);
+                }
             }
-            itemAdapter.setOriginItemList(collectedItems);
-
             return null;
         }
 
         private List<ApplicationInfo> checkForLaunchIntent(List<ApplicationInfo> list) {
 
-            ArrayList<ApplicationInfo> appList = new ArrayList<ApplicationInfo>();
+            ArrayList<ApplicationInfo> appList = new ArrayList<>();
 
             for (ApplicationInfo info : list) {
                 try {
@@ -166,6 +202,8 @@ public class MainActivity extends AppCompatActivity implements ListenerActivity 
         @Override
         protected void onPostExecute(Void result) {
             progress.dismiss();
+            itemAdapter = new ItemAdapter(MainActivity.this, R.layout.item_listview, collectedItems, MainActivity.this);
+            listView.setAdapter(itemAdapter);
             listView.invalidateViews();
             super.onPostExecute(result);
         }

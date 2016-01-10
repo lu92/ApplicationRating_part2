@@ -27,6 +27,7 @@ public class ItemAdapter extends ArrayAdapter<Item> {
     private List<Item> itemList;
     private ListenerActivity listenerActivity;
 
+    private NameComparator nameComparator = new NameComparator();
     private RatingComparator ratingComparator = new RatingComparator();
 
     private static final String PREFERENCES_NAME = "myPreferences";
@@ -36,24 +37,40 @@ public class ItemAdapter extends ArrayAdapter<Item> {
         super(context, resource, objects);
         this.activity = context;
         this.itemList = objects;
+        this.originItemList = new ArrayList<>(objects);
         this.listenerActivity = listenerActivity;
         this.sharedPreferences = activity.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE);
-        itemFilter = new ItemFilter();
     }
 
+    public void sortByName() {
+        Collections.sort(getItemList(), nameComparator);
+        ItemAdapter.this.notifyDataSetChanged();
+    }
 
-    public void setOriginItemList(List<Item> originItemList) {
-        this.originItemList = originItemList;
+    public void sortByRating() {
+        Collections.sort(getItemList(), ratingComparator);
+        ItemAdapter.this.notifyDataSetChanged();
     }
 
     public List<Item> getItemList() {
         return itemList;
     }
 
+    public void resetData() {
+        itemList = new ArrayList<>(originItemList);
+    }
+
+    public long getItemListSize() {
+        return itemList.size();
+    }
+
+    public long getOriginItemListSize() {
+        return originItemList.size();
+    }
+
     @Override
     public Item getItem(int position) {
         return itemList.get(position);
-//        return originItemList.get(position);
     }
 
     @Override
@@ -68,13 +85,11 @@ public class ItemAdapter extends ArrayAdapter<Item> {
 
         } else {
             holder = (ViewHolder) convertView.getTag();
-            //holder.ratingBar.getTag(position);
         }
 
         holder.ratingBar.setOnRatingBarChangeListener(onRatingChangedListener(holder, position));
 
         holder.ratingBar.setTag(position);
-//        holder.ratingBar.setRating(getItem(position).getRatingStar());
         holder.ratingBar.setRating(sharedPreferences.getFloat(getItem(position).getAppName(), 0));
         holder.appName.setText(getItem(position).getAppName());
         holder.appImageView.setImageDrawable(getItem(position).getApplicationInfo().loadIcon(activity.getPackageManager()));
@@ -85,6 +100,8 @@ public class ItemAdapter extends ArrayAdapter<Item> {
 
     @Override
     public Filter getFilter() {
+        if (itemFilter == null)
+            itemFilter = new ItemFilter();
         return itemFilter;
     }
 
@@ -99,14 +116,15 @@ public class ItemAdapter extends ArrayAdapter<Item> {
                 preferencesEditor.putFloat(item.getAppName(), item.getRatingStar());
                 preferencesEditor.commit();
 
-
-                Collections.sort(itemList, ratingComparator);
-//                listView.invalidateViews();
-                int newIndexOfItem = itemList.indexOf(item);
-                Log.i("newIndexOfItem", item.getAppName() + "\t->\t" + newIndexOfItem);
-                listenerActivity.getListView().smoothScrollToPosition(newIndexOfItem);
-                listenerActivity.getListView().invalidateViews();
-                notifyDataSetChanged();
+                if (listenerActivity.getSelectedButton() == ButtonEnum.SORT_BY_RATING_BUTTON) {
+                    Collections.sort(itemList, ratingComparator);
+//                  listView.invalidateViews();
+                    int newIndexOfItem = itemList.indexOf(item);
+                    Log.i("newIndexOfItem", item.getAppName() + "\t->\t" + newIndexOfItem);
+                    ItemAdapter.this.notifyDataSetChanged();
+                    listenerActivity.getListView().smoothScrollToPosition(newIndexOfItem);
+                    listenerActivity.getListView().invalidateViews();
+                }
             }
         };
     }
@@ -115,7 +133,6 @@ public class ItemAdapter extends ArrayAdapter<Item> {
         return new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.i("Adapter", "imageView on position " + position);
                 listenerActivity.runSelectedApp(position);
             }
         };
@@ -148,14 +165,18 @@ public class ItemAdapter extends ArrayAdapter<Item> {
 
 
             filterResults.values = filteredItems;
+            Log.i("ItemAdapter", "originItemList size = " + originItemList.size());
             itemList.clear();
             itemList.addAll(filteredItems);
-            notifyDataSetChanged();
+            ItemAdapter.this.notifyDataSetChanged();
             return filterResults;
         }
 
         @Override
         protected void publishResults(CharSequence constraint, FilterResults results) {
+//            itemList.clear();
+//            itemList.addAll((List<Item>) results.values);
+//            notifyDataSetChanged();
         }
     }
 }
